@@ -1,7 +1,6 @@
 package parser
 
 import (
-	"fmt"
 	"math"
 	"strconv"
 	"strings"
@@ -49,8 +48,9 @@ func RemoveAdditions(s string) string {
 }
 
 type Diff struct {
-	Left  string
-	Right string
+	Left     string
+	Right    string
+	MaxLines int
 }
 
 const (
@@ -84,21 +84,21 @@ func Parse(diffLines, diffWords string) (*Diff, error) {
 		}
 	}
 
-	lineIndent := int(math.Ceil(math.Log10(float64(len(wordsDiffByLine) + 1))))
-	format := fmt.Sprintf("%%%dd %%s", lineIndent)
-	for i, line := range wordsDiffByLine {
-		//prefix := " "
-		//if s, ok := changesMap[i+1]; ok {
-		//if s < 0 {
-		//prefix = "-"
-		//} else {
-		//prefix = "+"
-		//}
-		//}
-		line = strings.Replace(line, "%", "%%", -1)
-		//line = fmt.Sprintf("%s %s", prefix, line)
-		wordsDiffByLine[i] = fmt.Sprintf(format, i+1, line)
-	}
+	//lineIndent := int(math.Ceil(math.Log10(float64(len(wordsDiffByLine) + 1))))
+	//format := fmt.Sprintf("%%%dd %%s", lineIndent)
+	//for i, line := range wordsDiffByLine {
+	//prefix := " "
+	//if s, ok := changesMap[i+1]; ok {
+	//if s < 0 {
+	//prefix = "-"
+	//} else {
+	//prefix = "+"
+	//}
+	//}
+	//line = strings.Replace(line, "%", "%%", -1)
+	//line = fmt.Sprintf("%s %s", prefix, line)
+	//wordsDiffByLine[i] = fmt.Sprintf(format, i+1, line)
+	//}
 
 	joined := strings.Join(wordsDiffByLine, "\n")
 
@@ -113,8 +113,14 @@ func Parse(diffLines, diffWords string) (*Diff, error) {
 		right[i] = rightLineHL + strings.Replace(right[i], "\x1b[0m", rightLineHL, -1) + "\x1b[0m"
 	}
 
+	maxLines := len(left)
+	if len(right) > maxLines {
+		maxLines = len(right)
+	}
+
 	return &Diff{
-		Left:  strings.Join(left, "\n"),
-		Right: strings.Join(right, "\n"),
+		Left:     strings.Join(left, "\n"),
+		Right:    strings.Join(right, "\n"),
+		MaxLines: maxLines,
 	}, nil
 }
