@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/jroimartin/gocui"
-	"github.com/ruggi/vgit/parser"
+	"github.com/ruggi/gdiff/parser"
 )
 
 func main() {
