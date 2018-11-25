@@ -30,13 +30,18 @@ func quit(g *gocui.Gui, v *gocui.View) error {
 	return gocui.ErrQuit
 }
 
-func layout(g *gocui.Gui) func(*gocui.Gui) error {
-	diffs, err := parser.LoadDiffs()
-	if err != nil {
-		panic(err)
-	}
+var (
+	curDiff = 0
+	diffs   []*parser.Diff
+	cursorY = 0
+)
 
-	diff := diffs[0] // TODO files picker
+func layout(g *gocui.Gui) func(*gocui.Gui) error {
+	var err error
+	diffs, err = parser.LoadDiffs()
+	if err != nil {
+		panic(err) // TODO move this away
+	}
 
 	return func(g *gocui.Gui) error {
 		w, h := g.Size()
@@ -46,45 +51,60 @@ func layout(g *gocui.Gui) func(*gocui.Gui) error {
 				return err
 			}
 
-			fmt.Fprintf(v, "%s", diff.Left)
-
 			v.Editable = false
 			v.Wrap = true
+
+			fmt.Fprintf(v, "%s", diffs[curDiff].Left)
 		}
 		if v, err := g.SetView("right", w/2, 0, w-1, h-1); err != nil {
 			if err != gocui.ErrUnknownView {
 				return err
 			}
 
-			fmt.Fprintf(v, "%s", diff.Right)
-
 			v.Editable = false
 			v.Wrap = true
+
+			fmt.Fprintf(v, "%s", diffs[curDiff].Right)
 		}
 
 		return nil
 	}
 }
 
-var (
-	y = 0
-)
-
 func moveCursor(direction int) func(*gocui.Gui, *gocui.View) error {
 	return func(g *gocui.Gui, _ *gocui.View) error {
-		y += direction
-		if y < 0 {
-			y = 0
+		cursorY += direction
+		if cursorY < 0 {
+			cursorY = 0
 		}
 		// TODO prevent going after max height
 		if v, err := g.View("left"); err == nil {
-			v.SetOrigin(0, y)
+			v.SetOrigin(0, cursorY)
 		}
 		if v, err := g.View("right"); err == nil {
-			v.SetOrigin(0, y)
+			v.SetOrigin(0, cursorY)
 		}
 		return nil
 	}
+}
+
+func nextFile(g *gocui.Gui, v *gocui.View) error {
+	curDiff++
+	if curDiff >= len(diffs) {
+		curDiff = 0
+	}
+	g.Update(func(g *gocui.Gui) error {
+		if v, err := g.View("left"); err == nil {
+			v.Clear()
+			fmt.Fprintf(v, "%s", diffs[curDiff].Left)
+		}
+		if v, err := g.View("right"); err == nil {
+			v.Clear()
+			fmt.Fprintf(v, "%s", diffs[curDiff].Right)
+		}
+		return nil
+	}) // TODO this SUCKS. it's just for experimenting.
+	return nil
 }
 
 func keybindings(g *gocui.Gui) error {
@@ -95,6 +115,9 @@ func keybindings(g *gocui.Gui) error {
 		return err
 	}
 	if err := g.SetKeybinding("", gocui.KeyArrowUp, gocui.ModNone, moveCursor(-1)); err != nil {
+		return err
+	}
+	if err := g.SetKeybinding("", gocui.KeyTab, gocui.ModNone, nextFile); err != nil {
 		return err
 	}
 	return nil
